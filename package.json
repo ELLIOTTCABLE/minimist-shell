@@ -1,0 +1,28 @@
+{  "author"     : "ELLIOTTCABLE (http://ell.io/tt)"
+
+ , "name"       : "minimist-shell"
+ , "version"    : "0.0.0"
+ , "license"    : "ISC"
+
+ , "repository" : "ELLIOTTCABLE/minimist-shell"
+ , "bugs"       : "https://github.com/ELLIOTTCABLE/minimist-shell/issues"
+
+ , "description":
+      "A `getopt`-style shell-command for using `minimist` in your npm/shell scripts"
+ , "keywords"   : [
+      "getopt", "minimist", "argv", "optimist", "argparse"
+    , "command", "shell", "console", "cli", "command-line", "process", "args", "terminal", "posix"
+    , "script", "npm", "task", "lifecycle", "hooks", "test", "bin"
+   ]
+
+ , "main"       : "./minimist-shell.js"
+ , "bin"        : {"minimist" : "./bin/minimist-shell"}
+
+ , "dependencies"     :{"debug"                              : "^2.6.6"
+
+                      , "minimist"                           : "^1.2.0"
+                      , "concat-stream"                      : "^1.6.0"
+
+                      , "indent-string"                      : "^3.1.0"
+   }
+}

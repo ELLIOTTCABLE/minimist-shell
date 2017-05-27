@@ -1,0 +1,59 @@
+#!/usr/bin/env node
+var debug          = require('debug')('minimist-shell:bin')
+  , indent         = require('indent-string')
+  , minimist_shell = require('../minimist-shell.js')
+
+  , argv           = process.argv.slice(2)
+debug("original argv:\n%o", argv)
+
+if (process.stdin.isTTY) no_config()
+if (process.stdout.isTTY)
+   debug("(STDOUT appears to be a TTY?)")
+
+debug("reading options")
+process.stdin.pipe(require('concat-stream')(function(buffer){ var config, minimist, script
+   buffer = buffer.toString()
+   if (buffer.trim().length === 0) no_config()
+
+   config = JSON.parse(buffer)
+   debug("parsing argv with options:\n%O", config)
+
+   minimist = config.minimist_package || '_non_existent_package'
+   try {
+      minimist = require(minimist) }
+   catch (e) { if (e.code !== 'MODULE_NOT_FOUND') throw e
+
+      try {
+         minimist = require('rminimist') }
+      catch (e) { if (e.code !== 'MODULE_NOT_FOUND') throw e
+
+         try {
+            minimist = require('minimist') }
+         catch (e) { if (e.code !== 'MODULE_NOT_FOUND') throw e
+
+            console.error("!! minimist-shell: `minimist-shell` must be installed alongside an "+
+               "implementation of `minimist`.")
+            console.error("  (Try `npm install rminimist`!)")
+            process.exit(10)
+   }}}
+
+   argv = minimist(argv, config)
+   debug("parsing argv result:\n%O", argv)
+
+   script = minimist_shell(argv, config)
+
+   debug("generated script, printing it to calling shell:\n%s", indent(script, 2))
+   console.log(script)
+}))
+
+function no_config(){
+   const e = new Error("!! minimist-shell: No config provided on standard-input.")
+
+   console.error(e.message)
+   console.error("   Make sure to redirect the config from a file upon invocation:")
+   console.error("")
+   console.error("      minimist $* <stuff/config.json")
+   console.error("")
+   console.error(e.stack.split("\n").slice(1).join("\n"))
+   process.exit(10)
+}
