@@ -13,12 +13,67 @@ command-line flags' values as shell variables.
     console.log( require('minimist-shell')(argv, opts) )
     // foo="yay" f="yay"
 
+In particular, `minimist_shell()` attempts to generate shell-code according to a few philosophies:
+
+ - I'm 1. generating 2. stringly-typed code for 3. one of the world's [most notoriously
+   fragile languages][1] based on 4. direct user-input in 5. a knocked-off-in-a-week-ish (I hope?
+   ask me in a week.) library written by 6. one dude 7. in his free time.
+
+   This is not secure. This will not be secure. Do not use this for things that need to be secure.
+   (In particular, if you ever type `eval "$(minimist ...)"` in a script run via `sudo`, I will
+   personally hunt you down and scold you. Scold. With the wagging finger and *everything*.)
+
+ - I've spent the lion's share of my time working in shells straining to write POSIX-compatible
+   code. Some would argue that this is unnecessary nowadays (especially for the types of tasks for
+   which `minimist` is likely to be used on the command-line — in developer's terminals, while
+   contributing to (or using) JavaScript projects, in super-modern, up-to-date, and tricked-out
+   `zsh`es and Bashes); but experience has taught me that it's way easier to use something
+   unnecessarily POSIX-strict in a modern-shell setting, than it is to use something written for
+   modern shells in a POSIX-sh setting.
+
+   Thus, `minimist-shell` is designed to be POSIX-sh-first (see more on this under the
+   `"posix": false` option below).
+
+ - That said ... although I've successfully (for the most part) avoided shell arrays, integer
+   support, so-on and so-forth in *many* of my scripts to date ... argument-parsing is *precisely*
+   the sort of thing for which these features shine.
+
+   So, though secondary to the goal of pure POSIX-compliance by default, `minimist-shell` *attempts*
+   to support more modern shell-features, when relevant to the goal of referring to command-line
+   arguments. If your scripts are primarily going to be run interactively by developers, working in
+   modern shells, you can tweak `minimist-shell` to enable *much* more intuitive interaction with
+   certain forms of arguments. (See the `"arrays"`, `"associative_arrays"`, `"typesets"` options.)
+
+ - Finally, `minimist-shell` tries very hard not to step on *declared* arguments in order to
+   implement any of the convenience features mentioned herein.
+
+   Several of my features generate shell-variables of names slightly differing from the arguments
+   passed by the user (for instance, a suffixed `$foo1` variable to refer to the first element of an
+   array-argument; or `$FOO` as an alias to `$foo` when the `"uppercase"` option is enabled.)
+   However, as it's remotely possible that you could meaningfully use arguments named `--foo1` or
+   `--FOO` in addition to `--foo`, `minimist-shell` will *never* generate such aliases or
+   conveniences if it can ascertain that the name in question is in any way in-use — *even if it
+   isn't present in a given command-line.* This is intended to provide deterministic behaviour of a
+   given script's argument-parser, regardless of the particular set of passed arguments.
+
+       printf "'%s' " $# "$@"                          //=> '1' '--foo=123'
+       eval "$(minimist $* <<<'{"uppercase":true}')"
+       print "$FOO"                                    //=> '123'
+       eval "$(minimist $* <<<'{"uppercase":true, "boolean":"FOO"}')"
+       print "$FOO"                                    //=> ''
+       print "$foo"                                    //=> '123'
+
+   (This usually involves checking the various `minimist` / `rminimist` declaration-arrays — i.e. if
+    you declare `{ f: 'FOO' }` in `opts.alias`, `minimist-shell` will never stomp on `$FOO`, even if
+    it's not passed by the user as a flag. This protective behaviour can be explicitly triggered for
+    untyped arguments by adding them to an array at `opts.arguments`.)
+
 ### Options
 In addition<strong name="a1">[¹](#fn1)</strong> to the existing properties of the `opts` object
 passed to `minimist()`, several `minimist-shell`-specific options may be included:
 
  - `"positionals":` [**Default:** `"none"`]
-   The equivalent of `minimist`'s `argv._`, to a shell-script, are the [“positional parameters”][1]:
+   The equivalent of `minimist`'s `argv._`, to a shell-script, are the [“positional parameters”][2]:
    `$1 ... $9`, `${10} ... ${N}`, and so on. I provide three ways to handle these:
 
    1. **`"none"`:** By default, `minimist_shell()` returns a script that only manipulates
@@ -54,7 +109,7 @@ passed to `minimist()`, several `minimist-shell`-specific options may be include
           printf "'%s' " $# "$@"                       //=> '4' 'foo' '--path' '/whee' 'bar'
 
  - `"booleans":` [**Default:** `""` — the empty string]
-   There's [a handful of popular ways][2] to represent booleans, `true` and `false`, in shell-
+   There's [a handful of popular ways][3] to represent booleans, `true` and `false`, in shell-
    scripts; unfortunately, it's a common enough problem — and one with enough popular solutions —
    that I don't feel compfortable dictating a convention here, over configuration. Thus, there's
    three settings for this option:
@@ -150,14 +205,14 @@ passed to `minimist()`, several `minimist-shell`-specific options may be include
    this is probably `minimist`'s least-used feature, I'm not going to spend too much love on
    perfecting the shell-script translation.)
 
- - `"typeset":` [**Default:** `false`]
+ - `"typesets":` [**Default:** `false`]
    FIXME
 
  - `"uppercase":` [**Default:** `false`]
    Causes `$lowercase` variables to be duplicated in `$UPPERCASED` form as well.
 
    This option is provided because some shell-scripters prefer to write their scripts with all-
-   uppercase variable naming; but it's off-by-default, as this is [considered ill-advised][3].
+   uppercase variable naming; but it's off-by-default, as this is [considered ill-advised][4].
 
  - `"POSIX":` [**Default:** `true`]
    Although most modern shells are *derived* from the Bourne shell, they have come quite a long way
@@ -189,11 +244,12 @@ passed to `minimist()`, several `minimist-shell`-specific options may be include
    Bash only shipped support in v4.0 — which is still fairly rare in production. (For instance, as
    of this writing in mid-2017, macOS is still shipping with Bash **3.2**.) <sub>[↩︎](#a3)</sub>
 
-   [1]: <http://wiki.bash-hackers.org/scripting/posparams>
+   [1]: <http://mywiki.wooledge.org/BashWeaknesses> "Greg's Wiki — BashWeaknesses"
+   [2]: <http://wiki.bash-hackers.org/scripting/posparams>
       "Bash Hackers Wiki — Handling positional parameters"
-   [2]: <https://unix.stackexchange.com/a/185680/12095>
+   [3]: <https://unix.stackexchange.com/a/185680/12095>
       "What is a best practice to represent a boolean value in a shell script?"
-   [3]: <https://unix.stackexchange.com/a/223599/12095>
+   [4]: <https://unix.stackexchange.com/a/223599/12095>
       "Are there naming conventions for variables in shell scripts?"
 
    [set]: <http://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#set>
