@@ -19,6 +19,7 @@
  , "bin"        : {"minimist" : "./bin/minimist-shell"}
 
  , "dependencies"     :{"debug"                              : "^2.6.6"
+                      , "lodash"                             : "^4.17.4"
 
                       , "minimist"                           : "^1.2.0"
                       , "concat-stream"                      : "^1.6.0"

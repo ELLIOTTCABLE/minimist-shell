@@ -1,4 +1,5 @@
-var debug   = require('debug')('minimist-shell')
+const debug    = require('debug')('minimist-shell')
+    , _        = require('lodash')
 
 /**
  * Given an `argv`-object parsed by `minimist`, this function will return a string that, when
@@ -12,6 +13,8 @@ var debug   = require('debug')('minimist-shell')
  *
  *     console.log( require('minimist-shell')(argv, opts) )
  *     // foo="yay" f="yay"
+ *
+ * (Further invocation information and usage is down below.)
  *
  * In particular, `minimist_shell()` attempts to generate shell-code according to these
  * philosophies:
@@ -47,6 +50,24 @@ var debug   = require('debug')('minimist-shell')
  *    intuitive interaction with certain forms of arguments. (See the `"arrays"`,
  *    `"associative_arrays"`, and `"typesets"` options, below.)
  *
+ *  - It's very easy to come up with things you *can* do in JavaScript, and *cannot* do in shell-
+ *    script — or at least, things that are *devilishly hard* to do in shell-script. Pursuant to
+ *    that, I'd much rather `minimist-shell` handle the general or common cases well, and completely
+ *    ignore the perverse ones.
+ *
+ *    At the most basic, this means arguments with characters other than the standard shell-variable
+ *    naming set (`[a-zA-Z_][0-9a-zA-Z_]*`) will be completly ignored. No attempt will be made to
+ *    turn, for instance, `--passé` will not be exposed under any shell-variable whatsoever.
+ *
+ *    Sorry, speakers of all those beautiful foreign languages — blame the shell, not me. `)=`
+ *
+ *    (The only exception here, is argument *content* w.r.t. shell-quoting: writing here, in this
+ *     documentation, instructions to avoid trying to use arbitrarily-perverse command-line
+ *     argument-names is useful, as the author of the script has some measure of control over that;
+ *     but the *data* passed to their script — well, that's not necessarily the case, anymore. I
+ *     intend to go to some lengths to ensure fairly-perverse argument-content is preserved, as
+ *     passed, in the shell-variable.)
+ *
  *  - Finally, `minimist-shell` tries very hard not to step on *declared* arguments in order to
  *    implement any of the convenience features mentioned herein.
  *
@@ -69,11 +90,15 @@ var debug   = require('debug')('minimist-shell')
  *    (This usually involves checking the various `minimist` / `rminimist` declaration-arrays — i.e.
  *     if you declare `{ f: 'FOO' }` in `opts.alias`, `minimist-shell` will never stomp on `$FOO`,
  *     even if it's not passed by the user as a flag. This protective behaviour can be explicitly
- *     triggered for untyped arguments by adding them to an array at `opts.arguments`.)
+ *     triggered for untyped arguments by adding them to an array at `opts.shell.all_arguments`.)
+ *
+ * ### Usage
+ *
+ * FIXME
  *
  * ### Options
  * In addition<strong name="a1">[¹](#fn1)</strong> to the existing properties of the `opts` object
- * passed to `minimist()`, several `minimist-shell`-specific options may be included:
+ * passed to `minimist()`, several `minimist_shell()`-specific options may be included:
  *
  *  - `"positionals":` [**Default:** `"none"`]
  *    The equivalent of `minimist`'s `argv._`, in a shell-script, are the [“positional
@@ -263,7 +288,136 @@ var debug   = require('debug')('minimist-shell')
  *       "The Open Group Base Specifications / IEEE Std 1003.1-2008 — The `set` builtin"
  */
 function minimist_shell(argv, opts){
-   return '(>&2 printf "-- minimist_shell: results being evaluated\\n")'
+   const shOpts = validate_opts(opts)
+
+   // NYI ...
+}
+
+/**
+ * A helper to validate the options passed into `minimist_shell()`. Returns a cloned-and-cleaned
+ * `opts` object; and throws `ArgumentErrors` on egregious unsupported settings.
+ */
+function validate_opts(orig){
+   let positionals, booleans, arrays, associative_arrays, typesets, uppercase, POSIX
+
+   if (typeof orig !== 'object')
+      throw new ArgumentError(
+               "minimist_shell() requires the original `opts`-objet passed to `minimist()`!")
+
+   const opts = Object.assign(new Object, orig.shell)
+
+   // First, aliases: this is determining *what* the user asked for.
+   ['positionals', 'booleans', 'arrays', 'associative_arrays', 'typesets', 'uppercase']
+      .forEach(opt =>
+         if (typeof opts[opt] === 'undefined')
+                    opts[opt] = orig[opt] )
+
+   if (typeof opts.POSIX === 'undefined') opts.POSIX = opts.posix
+   if (typeof opts.POSIX === 'undefined') opts.POSIX = orig.POSIX
+   if (typeof opts.POSIX === 'undefined') opts.POSIX = orig.posix
+
+   // Now, validation: ensuring ‘what the user asked for’ is a thing we can do (and handling of
+   // default values, while we're at it.)
+   positionals = (typeof  opts.positionals === 'undefined')
+               ? 'none' : opts.positionals
+
+   if (! _(['none', 'set', 'prefix']).includes(positionals) )
+      throw multiline_error(new ArgumentError
+       , 'minimist_shell(): Invalid setting for "positionals" option.'
+       , 'minimist_shell(..., {"positionals":...}) must be set to one of these strings:'
+       , '   "none", "set", or "prefix".')
+
+   booleans = (typeof opts.booleans === 'undefined')
+            ? ""    : opts.booleans
+
+   if (! _.isArray(booleans) && booleans !== "" && booleans !== 'function')
+      throw multiline_error(new ArgumentError
+       , 'minimist_shell(): Invalid setting for "booleans" option.'
+       , 'minimist_shell(..., {"booleans":...}) must be set to one of:'
+       , ' - The empty string (""),'
+       , ' - The precise string "function",'
+       , ' - or an array of two strings: ["yes", "no"].')
+
+   arrays = (typeof opts.arrays === 'undefined')
+          ? false : opts.arrays
+
+   if (typeof arrays !== 'boolean')
+      throw multiline_error(new ArgumentError
+       , 'minimist_shell(): Invalid setting for "arrays" option.'
+       , 'minimist_shell(..., {"arrays":...}) must be set to either `true` or `false`.')
+
+   associative_arrays = (typeof opts.associative_arrays === 'undefined')
+                      ? false : opts.associative_arrays
+
+   if (typeof associative_arrays !== 'boolean')
+      throw multiline_error(new ArgumentError
+       , 'minimist_shell(): Invalid setting for "associative_arrays" option.'
+       , 'minimist_shell(..., {"associative_arrays":...}) must be set to either `true` or `false`.')
+
+   typesets = (typeof opts.typesets === 'undefined')
+            ? false : opts.typesets
+
+   if (typeof typesets !== 'boolean')
+      throw multiline_error(new ArgumentError
+       , 'minimist_shell(): Invalid setting for "typesets" option.'
+       , 'minimist_shell(..., {"typesets":...}) must be set to either `true` or `false`.')
+
+   uppercase = (typeof opts.uppercase === 'undefined')
+             ? false : opts.uppercase
+
+   if (typeof uppercase !== 'boolean')
+      throw multiline_error(new ArgumentError
+       , 'minimist_shell(): Invalid setting for "uppercase" option.'
+       , 'minimist_shell(..., {"uppercase":...}) must be set to either `true` or `false`.')
+
+   POSIX = (typeof opts.POSIX === 'undefined')
+         ? true  : opts.POSIX
+
+   if (typeof POSIX !== 'boolean')
+      throw multiline_error(new ArgumentError
+       , 'minimist_shell(): Invalid setting for "POSIX" option.'
+       , 'minimist_shell(..., {"POSIX":...}) must be set to either `true` or `false`.')
+
+   // Next, we validate *combinations* of options (i.e. POSIX-compatibility):
+   ['arrays', 'associative_arrays', 'typesets'].forEach(opt => {
+      if (opts.POSIX && opts[opt]) // If the user *explicitly* requested POSIX-sh, explode.
+         throw multiline_error(new ArgumentError
+          , 'minimist_shell(): "POSIX" setting cannot be satisfied!'
+          , 'minimist_shell(..., {"POSIX": true}) is incompatible with "'+opt+'".'
+          , '   Either disable "'+opt+'", or remove the explicit "POSIX" setting.')
+
+      POSIX = false
+   })
+
+   // Finally, apply our computed values, and return them.
+   opts.positionals        = positionals
+   opts.booleans           = booleans
+   opts.arrays             = array
+   opts.associative_arrays = associative_arrays
+   opts.typesets           = typesets
+   opts.uppercase          = uppercase
+   opts.POSIX              = POSIX
+
+   return opts
+}
+
+/**
+ * A helper to reduce a `minimist()`-produced `argv` to a flattened key-value map of shell-variables
+ * that should be returned by `minimist_shell()`.
+ *
+ * Expects the `opts` passed to your `minimist()` implementation, augmented as described in the
+ * documentation for `minimist_shell()`.
+ */
+function flatten_args(argv, opts, shOpts){
+   if (typeof shOpts === 'undefined')
+              shOpts = validate_opts(opts)
+
+   // NYI ...
+}
+
+function multiline_error(error, message, lines...){
+   error.message = message
+   error.lines = lines
 }
 
 module.exports = minimist_shell

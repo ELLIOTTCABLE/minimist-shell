@@ -40,7 +40,10 @@ process.stdin.pipe(require('concat-stream')(function(buffer){ var config, minimi
    argv = minimist(argv, config)
    debug("parsing argv result:\n%O", argv)
 
-   script = minimist_shell(argv, config)
+   try {
+      script = minimist_shell(argv, config) }
+   catch(e) { if (!e.lines) throw e
+      throw_multiline_error(e) }
 
    debug("generated script, printing it to calling shell:\n%s", indent(script, 2))
    console.log(script)
@@ -49,11 +52,18 @@ process.stdin.pipe(require('concat-stream')(function(buffer){ var config, minimi
 function no_config(){
    const e = new Error("!! minimist-shell: No config provided on standard-input.")
 
-   console.error(e.message)
-   console.error("   Make sure to redirect the config from a file upon invocation:")
-   console.error("")
-   console.error("      minimist $* <stuff/config.json")
-   console.error("")
-   console.error(e.stack.split("\n").slice(1).join("\n"))
-   process.exit(10)
+   e.lines = [e.message
+    , "   Make sure to redirect the config from a file upon invocation:"
+    , ""
+    , "      minimist $* <stuff/config.json"
+    , ""]
+
+   throw_multiline_error(e)
+}
+
+function throw_multiline_error(error){
+   if (error.lines)
+      error.lines.forEach(console.error)
+   console.error(error.stack.split("\n").slice(1).join("\n"))
+   process.exit(51)
 }
