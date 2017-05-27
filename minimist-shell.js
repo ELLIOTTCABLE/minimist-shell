@@ -7,7 +7,7 @@ command-line flags' values as shell variables.
 
     const opts = { alias: { foo: 'f' } }
         , argv =  require('minimist')( process.argv.slice(2), opts )
-    console.dir(process.argv)  //=>  ['
+    console.dir(process.argv)  //=>  ['--foo=yay']
     console.dir(argv)          //=>  { _: [], foo: "yay", f: "yay" }
 
     console.log( require('minimist-shell')(argv, opts) )
