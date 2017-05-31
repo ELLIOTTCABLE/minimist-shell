@@ -407,6 +407,20 @@ function validate_opts(minimist){
    opts.untyped            = untyped
    opts.POSIX              = POSIX
 
+   // Finally, let's validate the `minimist()` arguments — and reject styles not included in the
+   // subset of `minimist` functionality we support. (For `minimist`-supported functionality, we
+   // defer to `minimist` itself — I'm not going to re-validate options that my documentation
+   // instructs the user to pass to `minimist()` first!)
+   if (typeof minimist.boolean !== 'undefined' && ! _.isArray(minimist.boolean))
+      throw multiline_error(new ArgumentError
+       , "minimist_shell(): minimist()'s `\"boolean\": <string | bool>` is not supported"
+       , 'minimist_shell(..., {"boolean":...}) must be an *array* of string-ish flag names.')
+
+   if (typeof minimist.string !== 'undefined' && ! _.isArray(minimist.string))
+      throw multiline_error(new ArgumentError
+       , "minimist_shell(): minimist()'s `\"string\": <string>` is not supported"
+       , 'minimist_shell(..., {"string":...}) must be an *array* of string-ish flag names.')
+
    return opts
 }
 
@@ -417,11 +431,40 @@ function validate_opts(minimist){
  * Expects the `opts` passed to your `minimist()` implementation, augmented as described in the
  * documentation for `minimist_shell()`. Optionally takes a pre-validated `opts.shell`-object.
  */
-function flatten_args(argv, opts, shOpts){
+function flatten_args(argv, opts, shOpts){ const known = new Array
    if (typeof shOpts === 'undefined')
               shOpts = validate_opts(opts)
 
-   // NYI ...
+   // First off, to protect the user's intentions, we need a complete understanding of all
+   // flag-names that occur in *any* configuration option — i.e. the ‘known flags.’
+
+   // `minimist-shell`'s `opts.shell.untyped` (exists only to extend this `known`)
+   known = known.concat(shOpts.untyped)
+
+   // minimist `opts.boolean`
+   known = known.concat(opts.boolean)
+
+   // minimist `opts.string`
+   known = known.concat(opts.string)
+
+   // rminimist `opts.number`
+   known = known.concat(opts.number)
+
+   // rminimist `opts.array`
+   known = known.concat(opts.array)
+
+   known = _.compact(known)
+
+   // minimist `opts.default`
+   if (typeof opts.default !== 'undefined' && _.isObject(opts.default))
+      Object.getOwnPropertyNames(opts.default)
+
+   // minimist `opts.alias`
+   if (typeof opts.alias !== 'undefined' && _.isObject(opts.alias)) {
+      Object.getOwnPropertyNames(opts.alias).forEach(key => {
+         known.push(key)
+         known.push(opts.alias[key])
+      }) }
 }
 
 function multiline_error(error, message, lines...){
