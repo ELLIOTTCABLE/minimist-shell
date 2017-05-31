@@ -90,7 +90,7 @@ const debug    = require('debug')('minimist-shell')
  *    (This usually involves checking the various `minimist` / `rminimist` declaration-arrays — i.e.
  *     if you declare `{ f: 'FOO' }` in `opts.alias`, `minimist-shell` will never stomp on `$FOO`,
  *     even if it's not passed by the user as a flag. This protective behaviour can be explicitly
- *     triggered for untyped arguments by adding them to an array at `opts.shell.all_arguments`.)
+ *     triggered for untyped arguments by adding them to an array at `opts.untyped`.)
  *
  * ### Usage
  *
@@ -297,24 +297,24 @@ function minimist_shell(argv, opts){
  * A helper to validate the options passed into `minimist_shell()`. Returns a cloned-and-cleaned
  * `opts` object; and throws `ArgumentErrors` on egregious unsupported settings.
  */
-function validate_opts(orig){
-   let positionals, booleans, arrays, associative_arrays, typesets, uppercase, POSIX
+function validate_opts(minimist){
+   let positionals, booleans, arrays, associative_arrays, typesets, uppercase, POSIX, untyped
 
-   if (typeof orig !== 'object')
+   if (typeof minimist !== 'object')
       throw new ArgumentError(
                "minimist_shell() requires the original `opts`-objet passed to `minimist()`!")
 
-   const opts = Object.assign(new Object, orig.shell)
+   const opts = Object.assign(new Object, minimist.shell)
 
    // First, aliases: this is determining *what* the user asked for.
-   ['positionals', 'booleans', 'arrays', 'associative_arrays', 'typesets', 'uppercase']
+   ['positionals', 'booleans', 'arrays', 'associative_arrays', 'typesets', 'uppercase', 'untyped']
       .forEach(opt =>
          if (typeof opts[opt] === 'undefined')
-                    opts[opt] = orig[opt] )
+                    opts[opt] = minimist[opt] )
 
    if (typeof opts.POSIX === 'undefined') opts.POSIX = opts.posix
-   if (typeof opts.POSIX === 'undefined') opts.POSIX = orig.POSIX
-   if (typeof opts.POSIX === 'undefined') opts.POSIX = orig.posix
+   if (typeof opts.POSIX === 'undefined') opts.POSIX = minimist.POSIX
+   if (typeof opts.POSIX === 'undefined') opts.POSIX = minimist.posix
 
    // Now, validation: ensuring ‘what the user asked for’ is a thing we can do (and handling of
    // default values, while we're at it.)
@@ -370,6 +370,14 @@ function validate_opts(orig){
        , 'minimist_shell(): Invalid setting for "uppercase" option.'
        , 'minimist_shell(..., {"uppercase":...}) must be set to either `true` or `false`.')
 
+   untyped = (typeof     opts.untyped === 'undefined')
+           ? new Array : opts.untyped
+
+   if (! _.isArray(untyped))
+      throw multiline_error(new ArgumentError
+       , 'minimist_shell(): Invalid setting for "untyped" option.'
+       , 'minimist_shell(..., {"untyped":...}) must be an array of string-ish flag names.')
+
    POSIX = (typeof opts.POSIX === 'undefined')
          ? true  : opts.POSIX
 
@@ -396,6 +404,7 @@ function validate_opts(orig){
    opts.associative_arrays = associative_arrays
    opts.typesets           = typesets
    opts.uppercase          = uppercase
+   opts.untyped            = untyped
    opts.POSIX              = POSIX
 
    return opts
@@ -406,7 +415,7 @@ function validate_opts(orig){
  * that should be returned by `minimist_shell()`.
  *
  * Expects the `opts` passed to your `minimist()` implementation, augmented as described in the
- * documentation for `minimist_shell()`.
+ * documentation for `minimist_shell()`. Optionally takes a pre-validated `opts.shell`-object.
  */
 function flatten_args(argv, opts, shOpts){
    if (typeof shOpts === 'undefined')
