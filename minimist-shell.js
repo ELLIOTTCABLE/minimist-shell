@@ -312,9 +312,9 @@ function validate_opts(minimist){
 
    // First, aliases: this is determining *what* the user asked for.
    ['positionals', 'booleans', 'arrays', 'associative_arrays', 'typesets', 'uppercase', 'untyped']
-      .forEach(opt =>
+      .forEach(opt => {
          if (typeof opts[opt] === 'undefined')
-                    opts[opt] = minimist[opt] )
+                    opts[opt] = minimist[opt] })
 
    if (typeof opts.POSIX === 'undefined') opts.POSIX = opts.posix
    if (typeof opts.POSIX === 'undefined') opts.POSIX = minimist.POSIX
@@ -477,39 +477,39 @@ function flatten_args(argv, opts, shOpts, shellify_name){ let known
 
 
    // And now, we begin to process the flags!
-   const  flags = Object.assign(new Object, argv)
-   delete flags['_']
-   delete flags['--']
+          argv = Object.assign(new Object, argv)
+   delete argv['_']
+   delete argv['--']
 
    // First, we need to process any flags that aren't shell-compatible (attempting to replace them
    // with mutated names via the passed `shellify_name()`.)
    //
    // (They won't actually be removed from `flags` until the catch-all clean-up below.)
-   _(flags).entries()
-      .filter( ([flag, value])               => ! valid_shell_variable.test(flag)   )
-      .map(    ([flag, value])               => [flag, shellify_name(flag), value]  )
-      .filter( ([flag, shellified, value])   => Boolean(shellified)                 )
-      .filter( ([flag, shellified, value])   => ! _.contains(known, shellified)     )
-   .commit()
-      .forEach(([flag, shellified, value])   => {
-         flags[shellified] = flags[flag]
-         delete flags[flag] })
-   .commit()
+ //_(flags).entries()
+ //   .filter( ([flag, value])               =>    )
+ //   .map(    ([flag, value])               => [flag, , value]  )
+ //   .filter( ([flag, shellified, value])   => Boolean(shellified)                 )
+ //   .filter( ([flag, shellified, value])   => ! _.contains(known, shellified)     )
+ //.commit()
+ //   .forEach(([flag, shellified, value])   => {
+ //      flags[shellified] = flags[flag]
+ //      delete flags[flag] })
+ //.commit()
 
    // Now, we're going to flatten arrays and maps, if necessary
-   if (! shOpts.arrays) _(flags).entries()
-      .filter( ([flag, arr]) => _.isArray(arr) ).commit()
-      .forEach(([flag, arr]) => {
+ //if (! shOpts.arrays) _(flags).entries()
+ //   .filter( ([flag, arr]) => _.isArray(arr) ).commit()
+ //   .forEach(([flag, arr]) => {
 
-         _.forEach(arr, (e, idx) => {
-            const shellified  = module.exports.munger(flag, idx) // i.e. flag__N
-            flags[shellified] = arr[idx] })
+ //      _.forEach(arr, (e, idx) => {
+ //         const shellified  = module.exports.munger(flag, idx) // i.e. flag__N
+ //         flags[shellified] = arr[idx] })
 
-         delete flags[flag]
+ //      delete flags[flag]
 
-      }).commit()
+ //   }).commit()
 
-   if (! shOpts.associative_arrays) // NYI ...
+ //if (! shOpts.associative_arrays) // NYI ...
 
    // Finally, let's clean out any cruft.
    //---
@@ -541,12 +541,24 @@ function default_shellifier(name){
    return undefined
 }
 
-function default_munger(names...){
+/**
+ * A helper to produce shell-variable-names that proxy to argument-names.
+ *
+ * Can receive:
+ *  - A single string (generally, this can be left alone)
+ *  - `undefined`, followed by a string (indicating a string that needs to be prefixed)
+ *  - an array of strings (indicating a set of path-portions that need to be combined)
+ *
+ * The default munger produces:
+ *  - `$__1` for `[undefined, '1']`
+ *  - `$ab__cd__ef for `['ab', 'cd', 'ef']`
+ */
+function default_munger(...names){
   return names.join('__')
 }
 
 
-function multiline_error(error, message, lines...){
+function multiline_error(error, message, ...lines){
    error.message = message
    error.lines = lines
 }
