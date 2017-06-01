@@ -1,6 +1,10 @@
 const debug    = require('debug')('minimist-shell')
     , _        = require('lodash')
 
+
+const valid_shell_variable = /[A-Za-z_][A-Za-z0-9_]*/
+
+
 /**
  * Given an `argv`-object parsed by `minimist`, this function will return a string that, when
  * sourced by a Bourne-shell-derived `sh` (including `dash`, `bash`, and `zsh`), will expose the
@@ -430,46 +434,124 @@ function validate_opts(minimist){
  *
  * Expects the `opts` passed to your `minimist()` implementation, augmented as described in the
  * documentation for `minimist_shell()`. Optionally takes a pre-validated `opts.shell`-object.
+ *---
+ * FIXME: `shellify_name` isn't officially exposed yet, use at your own risk
  */
-function flatten_args(argv, opts, shOpts){ const known = new Array
+function flatten_args(argv, opts, shOpts, shellify_name){ let known
    if (typeof shOpts === 'undefined')
               shOpts = validate_opts(opts)
 
-   // First off, to protect the user's intentions, we need a complete understanding of all
-   // flag-names that occur in *any* configuration option — i.e. the ‘known flags.’
+   if (typeof shellify_name !== 'function')
+              shellify_name = default_shellifier
 
-   // `minimist-shell`'s `opts.shell.untyped` (exists only to extend this `known`)
-   known = known.concat(shOpts.untyped)
+   // Before we start, to protect the user's intentions, we need a complete understanding of all
+   // flag-names that appear in *any* configuration option — i.e. the ‘known flags.’
 
-   // minimist `opts.boolean`
+   // minimist-shell: `opts.shell.untyped` (exists exclusively to extend `known`)
+   known = [].concat(shOpts.untyped)
+
+   // minimist: `opts.boolean`
    known = known.concat(opts.boolean)
 
-   // minimist `opts.string`
+   // minimist: `opts.string`
    known = known.concat(opts.string)
 
-   // rminimist `opts.number`
+   // rminimist: `opts.number`
    known = known.concat(opts.number)
 
-   // rminimist `opts.array`
+   // rminimist: `opts.array`
    known = known.concat(opts.array)
 
    known = _.compact(known)
 
-   // minimist `opts.default`
+   // minimist: `opts.default`
    if (typeof opts.default !== 'undefined' && _.isObject(opts.default))
       Object.getOwnPropertyNames(opts.default)
 
-   // minimist `opts.alias`
+   // minimist: `opts.alias`
    if (typeof opts.alias !== 'undefined' && _.isObject(opts.alias)) {
       Object.getOwnPropertyNames(opts.alias).forEach(key => {
          known.push(key)
          known.push(opts.alias[key])
       }) }
+
+
+   // And now, we begin to process the flags!
+   const  flags = Object.assign(new Object, argv)
+   delete flags['_']
+   delete flags['--']
+
+   // First, we need to process any flags that aren't shell-compatible (attempting to replace them
+   // with mutated names via the passed `shellify_name()`.)
+   //
+   // (They won't actually be removed from `flags` until the catch-all clean-up below.)
+   _(flags).entries()
+      .filter( ([flag, value])               => ! valid_shell_variable.test(flag)   )
+      .map(    ([flag, value])               => [flag, shellify_name(flag), value]  )
+      .filter( ([flag, shellified, value])   => Boolean(shellified)                 )
+      .filter( ([flag, shellified, value])   => ! _.contains(known, shellified)     )
+   .commit()
+      .forEach(([flag, shellified, value])   => {
+         flags[shellified] = flags[flag]
+         delete flags[flag] })
+   .commit()
+
+   // Now, we're going to flatten arrays and maps, if necessary
+   if (! shOpts.arrays) _(flags).entries()
+      .filter( ([flag, arr]) => _.isArray(arr) ).commit()
+      .forEach(([flag, arr]) => {
+
+         _.forEach(arr, (e, idx) => {
+            const shellified  = module.exports.munger(flag, idx) // i.e. flag__N
+            flags[shellified] = arr[idx] })
+
+         delete flags[flag]
+
+      }).commit()
+
+   if (! shOpts.associative_arrays) // NYI ...
+
+   // Finally, let's clean out any cruft.
+   //---
+   // FIXME: Lodash needs to expand `_.remove()` to all Collections (i.e. Objects)
+   _.forEach(flags, (value, flag) => {
+      if (! valid_shell_variable.test(flag))
+         delete flags[flag] })
 }
+
+/**
+ * A helper to preform simple manipulations to reduce a property-name to a valid shell-variable-
+ * name. Takes a string, returns the same string if it's already shell-compatible, and returns
+ * falsey if the string can't be shell-ified.
+ *---
+ * This can currently be overridden by the fourth argument to `flatten_args`, although this is
+ * undocumented behaviour right now.
+ */
+function default_shellifier(name){
+   if (valid_shell_variable.test(name))
+      return name
+
+   if (/-/.test(name)) {
+      name.replace(/-/, '_')
+
+      if (valid_shell_variable.test(name))
+         return name
+   }
+
+   return undefined
+}
+
+function default_munger(names...){
+  return names.join('__')
+}
+
 
 function multiline_error(error, message, lines...){
    error.message = message
    error.lines = lines
 }
 
-module.exports = minimist_shell
+module.exports                = minimist_shell
+module.exports.flatten_args   = flatten_args
+module.exports.shellifier     = default_shellifier
+module.exports.munger         = default_munger
