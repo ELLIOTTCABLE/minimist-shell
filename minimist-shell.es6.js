@@ -295,6 +295,8 @@ function minimist_shell(argv, opts){
    const shOpts = validate_opts(opts)
 
    // NYI ...
+
+   return ''
 }
 
 /**
@@ -311,7 +313,7 @@ function validate_opts(minimist){
    const opts = Object.assign(new Object, minimist.shell)
 
    // First, aliases: this is determining *what* the user asked for.
-   ['positionals', 'booleans', 'arrays', 'associative_arrays', 'typesets', 'uppercase', 'untyped']
+  ;['positionals', 'booleans', 'arrays', 'associative_arrays', 'typesets', 'uppercase', 'untyped']
       .forEach(opt => {
          if (typeof opts[opt] === 'undefined')
                     opts[opt] = minimist[opt] })
@@ -404,7 +406,7 @@ function validate_opts(minimist){
    // Finally, apply our computed values, and return them.
    opts.positionals        = positionals
    opts.booleans           = booleans
-   opts.arrays             = array
+   opts.arrays             = arrays
    opts.associative_arrays = associative_arrays
    opts.typesets           = typesets
    opts.uppercase          = uppercase
