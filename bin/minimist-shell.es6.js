@@ -42,7 +42,7 @@ process.stdin.pipe(require('concat-stream')(function(buffer){ var config, minimi
 
    try {
       script = minimist_shell(argv, config) }
-   catch(e) { if (!e.lines) throw e
+   catch(e) {
       throw_multiline_error(e) }
 
    debug("generated script, printing it to calling shell:\n%s", indent(script, 2))
@@ -61,7 +61,9 @@ function no_config(){
    throw_multiline_error(e)
 }
 
+//haha janky tho
 function throw_multiline_error(error){
+   console.error(error.message)
    if (error.lines)
       error.lines.forEach(console.error)
    console.error(error.stack.split("\n").slice(1).join("\n"))
