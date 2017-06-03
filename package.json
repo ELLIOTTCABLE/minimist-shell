@@ -33,8 +33,14 @@
     , "plugins": [
          "transform-runtime"
        , "transform-flow-comments"
-       , "source-map-support"
       ]
+
+    , "env": {
+         "coverage"      : { "plugins": [ "espower", "empower-assert", "source-map-support" ] }
+       , "test"          : { "plugins": [ "espower", "empower-assert", "source-map-support" ] }
+       , "development"   : { "plugins": [ "espower", "empower-assert", "source-map-support" ] }
+       , "production"    : { "plugins": [ "unassert" ] }
+      }
 
     , "compact"                : false
    }
@@ -52,6 +58,12 @@
                       , "babel-preset-stage-3"                  : "^6.24.1"
                       , "babel-plugin-transform-runtime"        : "^6.23.0"
                       , "babel-plugin-transform-flow-comments"  : "^6.22.0"
+
+                      , "power-assert"                          : "^1.4.2"
+                      , "babel-plugin-espower"                  : "^2.3.2"
+                      , "babel-plugin-empower-assert"           : "^1.3.0"
+                      , "babel-plugin-unassert"                 : "^2.1.2"
+
                       , "source-map-support"                    : "^0.4.15"
                       , "babel-plugin-source-map-support"
                             : "blitzpick/babel-plugin-source-map-support"

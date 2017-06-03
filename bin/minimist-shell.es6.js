@@ -1,9 +1,11 @@
 #!/usr/bin/env node
-var debug          = require('debug')('minimist-shell:bin')
-  , indent         = require('indent-string')
-  , minimist_shell = require('../minimist-shell.js')
+const debug           = require('debug')('minimist-shell:bin')
+    , assert          = require('assert')
+    , indent          = require('indent-string')
+    , minimist_shell  = require('../minimist-shell.js')
 
-  , argv           = process.argv.slice(2)
+
+var argv = process.argv.slice(2)
 debug("original argv:\n%o", argv)
 
 if (process.stdin.isTTY) no_config()
