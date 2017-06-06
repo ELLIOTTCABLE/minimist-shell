@@ -1,0 +1,4 @@
+--ui require
+--check-leaks
+--reporter dot
+--compilers es6.js:babel-register

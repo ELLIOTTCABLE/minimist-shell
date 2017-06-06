@@ -16,10 +16,11 @@
    ]
 
  , "main"       : "./minimist-shell.js"
- , "bin"        : {"minimist" : "./bin/minimist-shell"}
+ , "bin"        :{"minimist" : "./bin/minimist-shell"}
 
  , "scripts": {
-      "build"                  : "./build.sh"
+      "test"                   : "MINIMIST_IMPL=minimist mocha ./test/**/*.tests.js && MINIMIST_IMPL=rminimist mocha ./test/**/*.tests.js"
+    , "build"                  : "./build.sh"
     , "prepare"                : "./build.sh"
    }
 
@@ -52,7 +53,10 @@
                       , "concat-stream"                         : "^1.6.0"
 
                       , "indent-string"                         : "^3.1.0"
+   }
+ , "devDependencies"  :{"mocha"                                 : "^3.4.2"
 
+                      , "babel-register"                        : "^6.24.1"
                       , "babel-cli"                             : "^6.24.1"
                       , "babel-preset-env"                      : "^1.5.1"
                       , "babel-preset-stage-3"                  : "^6.24.1"
@@ -67,5 +71,8 @@
                       , "source-map-support"                    : "^0.4.15"
                       , "babel-plugin-source-map-support"
                             : "blitzpick/babel-plugin-source-map-support"
+
+                      , "minimist"                              : "^1.2.0"
+                      , "rminimist"                             : "^1.0.1"
    }
 }

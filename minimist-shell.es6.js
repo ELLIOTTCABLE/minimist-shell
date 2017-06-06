@@ -1,4 +1,5 @@
 const debug    = require('debug')('minimist-shell')
+    , assert   = require('assert')
     , _        = require('lodash')
 
 
