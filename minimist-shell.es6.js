@@ -609,7 +609,7 @@ function flatten_args(argv, opts, shOpts, shellify_name){ let known
    const argf = new Object
 
    _.entries(argv).forEach(([key, value]) => {
-      if (_.contains(['_', '--'], key)) return;
+      if (_(['_', '--']).includes(key)) return;
 
       const result = $flatten(argf, value, key)
 
