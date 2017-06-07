@@ -11,6 +11,12 @@ const minimist = require(process.env.MINIMIST_IMPL)
       minimist.pkg = process.env.MINIMIST_IMPL
 
 describe("(with `"+minimist.pkg+"`)", function(){
+   describe("validate_opts()", function(){ let opts, argv, result
+
+      // FIXME
+
+   })
+
    describe("flatten_args()", function(){ let opts, argv, result
 
       it("exists", function(){
@@ -25,7 +31,7 @@ describe("(with `"+minimist.pkg+"`)", function(){
       })
 
       it("validates options if not explicitly passed a pre-validated options-object", function(){
-         argv        = minimist('', opts = {POSIX: 'invalid value!'})
+         argv = minimist('', opts = {POSIX: 'invalid value!'})
 
          assert.throws(() => flatten_args(argv, opts) )
       })

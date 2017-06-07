@@ -294,6 +294,7 @@ const valid_shell_variable = /[A-Za-z_][A-Za-z0-9_]*/
  */
 function minimist_shell(argv, opts){
    const shOpts = validate_opts(opts)
+       , argf = flatten_args(argv, opts, shOpts)
 
    // NYI ...
 
@@ -444,9 +445,6 @@ function flatten_args(argv, opts, shOpts, shellify_name){ let known
    if (typeof shOpts === 'undefined')
               shOpts = validate_opts(opts)
 
-   if (typeof shellify_name !== 'function')
-              shellify_name = default_shellifier
-
    // Before we start, to protect the user's intentions, we need a complete understanding of all
    // flag-names that appear in *any* configuration option — i.e. the ‘known flags.’
 
@@ -476,47 +474,150 @@ function flatten_args(argv, opts, shOpts, shellify_name){ let known
    known = _.compact(known)
 
 
-   // And now, we begin to process the flags!
-          argv = Object.assign(new Object, argv)
-   delete argv['_']
-   delete argv['--']
+   // Now we prepare the parameter-name-manipulation functions:
+   if (typeof shellify_name !== 'function')
+              shellify_name = default_shellifier
 
-   // First, we need to process any flags that aren't shell-compatible (attempting to replace them
-   // with mutated names via the passed `shellify_name()`.)
+   // The munger is overridden to return nothing at all, if it somehow generates a non-compat name.
+   const munger = function munger(...names){
+      const name = minimist_shell.munger(...names)
+
+      if (! valid_shell_variable.test(name))
+         return undefined
+      else
+         return name
+   }
+
+
+   const HANDLED = Symbol('$flatten()::HANDLED')
+
+   // This recursive-function can be called on sub-objects, to reduce them to path-named variables.
+   // At any given invocation, there is:
    //
-   // (They won't actually be removed from `flags` until the catch-all clean-up below.)
- //_(flags).entries()
- //   .filter( ([flag, value])               =>    )
- //   .map(    ([flag, value])               => [flag, , value]  )
- //   .filter( ([flag, shellified, value])   => Boolean(shellified)                 )
- //   .filter( ([flag, shellified, value])   => ! _.contains(known, shellified)     )
- //.commit()
- //   .forEach(([flag, shellified, value])   => {
- //      flags[shellified] = flags[flag]
- //      delete flags[flag] })
- //.commit()
+   //  - A `root` (originally the final `flags` map), on which assignments are made (if
+   //    `opts.associative_arrays` is enabled, this may be supplanted by a secondary map for
+   //    successive recursions),
+   //  - a current `obj` being examined,
+   //  - and the `path` to that obj (with the last, or possibly only, element being the key at which
+   //    it was found.)
+   //
+   // Returns a value if the `obj` at that path should be set, and `HANDLED` after intermediate
+   // steps that already set the values for their children.
+   function $flatten(root, value, ...path){
 
-   // Now, we're going to flatten arrays and maps, if necessary
- //if (! shOpts.arrays) _(flags).entries()
- //   .filter( ([flag, arr]) => _.isArray(arr) ).commit()
- //   .forEach(([flag, arr]) => {
+      // Keys with no value: emit nothing at all
+      if (typeof value === 'undefined')
+         return HANDLED
 
- //      _.forEach(arr, (e, idx) => {
- //         const shellified  = module.exports.munger(flag, idx) // i.e. flag__N
- //         flags[shellified] = arr[idx] })
+      // Simple string values: emit as-is
+      if (typeof value === 'string')
+         return value
 
- //      delete flags[flag]
+      // Simple boolean values: examine `opts.booleans`
+      if (typeof value === 'boolean') {
+         if (shOpts.booleans === '')
+            return value ? 'true' : ''
+         else
+         if (shOpts.booleans === 'function')
+            return value ? {type: 'function', string: "[ 0 -eq 0 ]"}
+                         : {type: 'function', string: "[ 0 -eq 1 ]"}
+         else
+         if (_.isArray(shOpts.booleans) && shOpts.booleans.length >= 2)
+            return value ? shOpts.booleans[0] : shOpts.booleans[1]
+         else assert.fail("invalid 'boolean' setting of " + shOpts.booleans)
+      }
 
- //   }).commit()
+      // Simple numeric values: examine `opts.typesets`
+      if (typeof value === 'number')
+         if (shOpts.typesets)
+            return value
+         else
+            return value.toString()
 
- //if (! shOpts.associative_arrays) // NYI ...
+      // The rest of the possibilities require flattening; if we're already recursing into the
+      // processing of an array and emitting of shell-arrays (which are one-dimensional) is enabled,
+      // then any non-simplistic value is an error.
+      if (root !== argf && _.isArray(root))
+         throw multiline_error(new ArgumentError
+          , 'minimist_shell(): "arrays" option is incompatible with nested structures.'
+          , 'If the "arrays" option is enabled, minimist_shell() can only produce one-'
+          , '   dismensional arrays — that is, homogenous arrays of scalar values. Arrays-of-'
+          , '   key-value maps, or arrays-of-arrays, will fail.')
 
-   // Finally, let's clean out any cruft.
+      // Now arrays,
+      if (_.isArray(value)) {
+         // If enabled, we still return an Array to be emitted, but with any sub-structure flattened
+         const emitting = shOpts.arrays
+                       && root === argf
+                       && path.length === 1
+
+         if (emitting) {
+            // TODO: Throw an error if array isn't homogenous
+            //let saw = { type: 'undefined', at: undefined }
+
+            const subArray = new Array
+
+            value.forEach((element, idx) => {
+               element = $flatten(subArray, element, idx)
+
+               assert(element !== HANDLED)
+               subArray[idx] = element }) }
+
+         // If disabled, or if we're already inside an object/array (i.e. not at the root), we
+         // flatten the array to postfixed string-ish names.
+         else {
+            value.forEach((element, idx) => {
+               element = $flatten(root, element, ...path, idx)
+
+               if (element !== HANDLED)
+                  root[ munger(...path, idx) ] = element }) }
+
+         return emitting ? subArray : HANDLED }
+
+      // And finally flag-map “objects”: recurse, and flatten
+      if (_.isObject(value)) {
+         // If thus configured, we're going to emit first-level Objects as associative-arrays
+         const emitting = shOpts.associative_arrays
+                       && root === argf
+                       && path.length === 1
+
+         if (emitting) {
+            const subMap = new Array
+
+            _.entries(value).forEach(([key, element]) => {
+               element = $flatten(subMap, element, key)
+
+               if (element !== HANDLED)
+                  subMap[ munger(key) ] = element }) }
+
+         // If that's disabled, or if we're in a sub-object already, we flatten
+         else {
+            _.entries(value).forEach(([key, element]) => {
+               element = $flatten(root, element, ...path, key)
+
+               if (element !== HANDLED)
+                  root[ munger(...path, key) ] = element }) }
+
+         return emitting ? subMap : HANDLED }
+
+      assert.fail('Unknown value in argf-map')
+   }
+
+   // And now, we begin to process the flags!
    //---
-   // FIXME: Lodash needs to expand `_.remove()` to all Collections (i.e. Objects)
-   _.forEach(flags, (value, flag) => {
-      if (! valid_shell_variable.test(flag))
-         delete flags[flag] })
+   // FIXME: This could probably be rolled into the recursie process
+   const argf = new Object
+
+   _.entries(argv).forEach(([key, value]) => {
+      if (_.contains(['_', '--'], key)) return;
+
+      const result = $flatten(argf, value, key)
+
+      if (result !== HANDLED)
+         argf[ munger(key) ] = result
+   })
+
+   return argf
 }
 
 /**
@@ -564,6 +665,7 @@ function multiline_error(error, message, ...lines){
 }
 
 module.exports                = minimist_shell
+module.exports.validate_opts  = validate_opts
 module.exports.flatten_args   = flatten_args
 module.exports.shellifier     = default_shellifier
 module.exports.munger         = default_munger
