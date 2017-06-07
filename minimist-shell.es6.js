@@ -465,18 +465,15 @@ function flatten_args(argv, opts, shOpts, shellify_name){ let known
    // rminimist: `opts.array`
    known = known.concat(opts.array)
 
-   known = _.compact(known)
-
    // minimist: `opts.default`
    if (typeof opts.default !== 'undefined' && _.isObject(opts.default))
-      Object.getOwnPropertyNames(opts.default)
+      known.concat(Object.keys(opts.default))
 
    // minimist: `opts.alias`
-   if (typeof opts.alias !== 'undefined' && _.isObject(opts.alias)) {
-      Object.getOwnPropertyNames(opts.alias).forEach(key => {
-         known.push(key)
-         known.push(opts.alias[key])
-      }) }
+   if (typeof opts.alias !== 'undefined' && _.isObject(opts.alias))
+      _.entries(opts.alias).forEach( ([key, value]) => known.push(key, value) )
+
+   known = _.compact(known)
 
 
    // And now, we begin to process the flags!
