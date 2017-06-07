@@ -1,7 +1,7 @@
 const debug    = require('debug')('minimist-shell:test')
     , describe = require('mocha').describe
     , it       = require('mocha').it
-    , assert   = require('power-assert')
+    , assert   = require('assert')
 
     , minimist_shell                   = require('../minimist-shell.es6.js')
     , { validate_opts, flatten_args }  = minimist_shell
@@ -34,6 +34,10 @@ describe("(with `"+minimist.pkg+"`)", function(){
          argv = minimist('', opts = {POSIX: 'invalid value!'})
 
          assert.throws(() => flatten_args(argv, opts) )
+      })
+
+      it("intentionally fails to test power-assert", function(){
+         assert(typeof Function === 'string')
       })
 
    })
