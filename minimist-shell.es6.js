@@ -1,5 +1,6 @@
 const debug    = require('debug')('minimist-shell')
     , Error    = require('es6-error')
+    , indent   = require('indent-string')
     , assert   = require('assert')
 
     , _        = require('lodash')
@@ -297,9 +298,14 @@ const ArgumentError = class ArgumentError extends Error {}
  */
 function minimist_shell(argv, opts){
    const shOpts = validate_opts(opts)
-       , argf = flatten_args(argv, opts, shOpts)
+   debug("compiled options; result:\n%O", shOpts)
+
+   const argf   = flatten_args(argv, opts, shOpts)
+   debug("compiled flags; result:\n%O", argf)
 
    // NYI ...
+   const script = ''
+   debug("compiled script; result:\n%s", indent(script, 2))
 
    return ''
 }

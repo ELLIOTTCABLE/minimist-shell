@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 const debug           = require('debug')('minimist-shell:bin')
     , assert          = require('assert')
-    , indent          = require('indent-string')
     , minimist_shell  = require('../minimist-shell.js')
 
 
@@ -47,7 +46,7 @@ process.stdin.pipe(require('concat-stream')(function(buffer){ var config, minimi
    catch(e) {
       throw_multiline_error(e) }
 
-   debug("generated script, printing it to calling shell:\n%s", indent(script, 2))
+   debug("generated script, printing it to calling shell")
    console.log(script)
 }))
 
