@@ -522,6 +522,13 @@ function flatten_args(argv, opts, shOpts, shellify_name){ let known
       if (typeof value === 'string')
          return value
 
+      // Simple numeric values: examine `opts.typesets`
+      if (typeof value === 'number')
+         if (shOpts.typesets)
+            return value
+         else
+            return value.toString()
+
       // Simple boolean values: examine `opts.booleans`
       if (typeof value === 'boolean') {
          if (shOpts.booleans === '')
@@ -535,13 +542,6 @@ function flatten_args(argv, opts, shOpts, shellify_name){ let known
             return value ? shOpts.booleans[0] : shOpts.booleans[1]
          else assert.fail("invalid 'boolean' setting of " + shOpts.booleans)
       }
-
-      // Simple numeric values: examine `opts.typesets`
-      if (typeof value === 'number')
-         if (shOpts.typesets)
-            return value
-         else
-            return value.toString()
 
       // The rest of the possibilities require flattening; if we're already recursing into the
       // processing of an array and emitting of shell-arrays (which are one-dimensional) is enabled,

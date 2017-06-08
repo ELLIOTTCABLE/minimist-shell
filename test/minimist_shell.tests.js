@@ -69,16 +69,7 @@ describe("(with `"+minimist.pkg+"`)", function(){
          assert(flags.indexOf('foo') === -1)
       })
 
-      it("maps numbers to strings in the absence of `opts.typesets`", function(){
-         argf   = minimist(['','', '--foo', '1337'], opts = { number: ['foo'] })
-         assert(typeof argf.foo === 'number')
-
-         result = flatten_args(argf, opts)
-         assert(typeof result.foo === 'string')
-         assert(result.foo === '1337')
-      })
-
-      it("maps boolean-false to the empty string in the absence of `opts.booleans`", function(){
+      it("maps numbers to strings (in the absence of `opts.typesets`)", function(){
          argf   = minimist(['','', '--foo', '1337'], opts = { number: ['foo'] })
          assert(typeof argf.foo === 'number')
 
@@ -90,6 +81,7 @@ describe("(with `"+minimist.pkg+"`)", function(){
       it("maps numbers to themselves with `opts.typesets`", function(){
          opts   = { number: ['foo'], shell: {typesets: true} }
          argf   = minimist(['','', '--foo', '1337'], opts)
+
          assert(opts.shell.typesets === true)
          assert(typeof argf.foo === 'number')
 
