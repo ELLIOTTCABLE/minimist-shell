@@ -1,7 +1,12 @@
 #!/usr/bin/env node
 const debug           = require('debug')('minimist-shell:bin')
     , assert          = require('assert')
+    , indent          = require('indent-string')
+    , chalk           = require('chalk')
+
     , minimist_shell  = require('../minimist-shell.js')
+
+chalk.enabled = true
 
 
 var argv = process.argv.slice(2)
@@ -44,7 +49,7 @@ process.stdin.pipe(require('concat-stream')(function(buffer){ var config, minimi
    try {
       script = minimist_shell(argv, config) }
    catch(e) {
-      throw_multiline_error(e) }
+      fail(e) }
 
    debug("generated script, printing it to calling shell")
    console.log(script)
@@ -59,14 +64,18 @@ function no_config(){
     , "      minimist $* <stuff/config.json"
     , ""]
 
-   throw_multiline_error(e)
+   fail(e)
 }
 
 //haha janky tho
-function throw_multiline_error(error){
-   console.error(error.message)
-   if (error.lines)
-      error.lines.forEach(console.error)
-   console.error(error.stack.split("\n").slice(1).join("\n"))
+function fail(err){
+   const message   = err.message.split("\n")
+       , stack     = err.stack.split("\n").map(line => line.trim())
+
+   console.error( chalk.red(  chalk.bold('!! ') + message[0]         )  )
+   console.error(             indent(message.slice(1).join("\n"), 3)    )
+
+   console.error( chalk.grey( chalk.bold('!! ') + stack[0]           )  )
+   console.error( chalk.grey( indent(stack.slice(1).join("\n"), 3)   )  )
    process.exit(51)
 }
