@@ -19,7 +19,7 @@
  , "bin"        :{"minimist" : "./bin/minimist-shell"}
 
  , "scripts": {
-      "test"                   : "MINIMIST_IMPL=minimist mocha ./test/**/*.tests.js && MINIMIST_IMPL=rminimist mocha ./test/**/*.tests.js"
+      "test"                   : "MINIMIST_IMPL=minimist mocha --opts mocha.opts ./test/**/*.tests.js && MINIMIST_IMPL=rminimist mocha --opts mocha.opts ./test/**/*.tests.js"
     , "build"                  : "./build.sh"
     , "prepare"                : "./build.sh"
    }
