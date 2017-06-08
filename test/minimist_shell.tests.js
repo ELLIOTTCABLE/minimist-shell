@@ -11,33 +11,45 @@ const minimist = require(process.env.MINIMIST_IMPL)
       minimist.pkg = process.env.MINIMIST_IMPL
 
 describe("(with `"+minimist.pkg+"`)", function(){
-   describe("validate_opts()", function(){ let opts, argv, result
+   describe("validate_opts()", function(){
 
       // FIXME
 
    })
 
-   describe("flatten_args()", function(){ let opts, argv, result
+   describe("flatten_args()", function(){ let opts, argf, result
 
       it("exists", function(){
          assert(typeof flatten_args === 'function')
       })
 
       it("doesn't throw, with empty arguments and options", function(){
-         argv        = minimist('', opts = {})
+         argf        = minimist(['',''], opts = {})
          opts.shell  = validate_opts(opts)
 
-         assert.doesNotThrow(() => flatten_args(argv, opts, opts.shell) )
+         assert.doesNotThrow(() => flatten_args(argf, opts, opts.shell) )
       })
 
       it("validates options if not explicitly passed a pre-validated options-object", function(){
-         argv = minimist('', opts = {POSIX: 'invalid value!'})
+         argf = minimist('', opts = {POSIX: 'invalid value!'})
 
-         assert.throws(() => flatten_args(argv, opts) )
+         assert.throws(() => flatten_args(argf, opts) )
       })
 
-      it("intentionally fails to test power-assert", function(){
-         assert(typeof Function === 'string')
+      it("returns a mapping", function(){
+         argf        = minimist(['',''], opts = {})
+         opts.shell  = validate_opts(opts)
+
+         result = flatten_args(argf, opts, opts.shell)
+         assert(typeof result === 'object')
+      })
+
+      it("maps simple string-ish flags directly", function(){
+         argf        = minimist(['','', '--foo', 'bar'], opts = {})
+         opts.shell  = validate_opts(opts)
+
+         result = flatten_args(argf, opts, opts.shell)
+         assert(result.foo === 'bar')
       })
 
    })
