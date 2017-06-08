@@ -1,3 +1,5 @@
 node_modules/*
 minimist-shell.js
+
 bin/minimist-shell
+example/config.json
