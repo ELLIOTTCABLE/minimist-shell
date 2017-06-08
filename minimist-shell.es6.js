@@ -1,10 +1,13 @@
 const debug    = require('debug')('minimist-shell')
+    , Error    = require('es6-error')
     , assert   = require('assert')
+
     , _        = require('lodash')
 
 
 const valid_shell_variable = /[A-Za-z_][A-Za-z0-9_]*/
 
+const ArgumentError = class ArgumentError extends Error {}
 
 /**
  * Given an `argv`-object parsed by `minimist`, this function will return a string that, when
@@ -303,7 +306,7 @@ function minimist_shell(argv, opts){
 
 /**
  * A helper to validate the options passed into `minimist_shell()`. Returns a cloned-and-cleaned
- * `opts` object; and throws `ArgumentErrors` on egregious unsupported settings.
+ * `opts` object; and throws `ArgumentError`s on egregious unsupported settings.
  */
 function validate_opts(minimist){
    let positionals, booleans, arrays, associative_arrays, typesets, uppercase, POSIX, untyped
@@ -659,9 +662,10 @@ function default_munger(...names){
 }
 
 
-function multiline_error(error, message, ...lines){
-   error.message = message
-   error.lines = lines
+function multiline_error(error, ...lines){
+   error.message = lines.join("\n")
+
+   return error
 }
 
 module.exports                = minimist_shell
@@ -669,3 +673,4 @@ module.exports.validate_opts  = validate_opts
 module.exports.flatten_args   = flatten_args
 module.exports.shellifier     = default_shellifier
 module.exports.munger         = default_munger
+module.exports.ArgumentError  = ArgumentError

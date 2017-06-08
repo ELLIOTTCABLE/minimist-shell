@@ -4,7 +4,11 @@ const debug    = require('debug')('minimist-shell:test')
     , assert   = require('assert')
 
     , minimist_shell                   = require('../minimist-shell.es6.js')
-    , { validate_opts, flatten_args }  = minimist_shell
+
+const  { validate_opts
+       , flatten_args
+       , ArgumentError
+} = minimist_shell
 
 assert.ok(process.env.MINIMIST_IMPL)
 const minimist = require(process.env.MINIMIST_IMPL)
@@ -12,6 +16,10 @@ const minimist = require(process.env.MINIMIST_IMPL)
 
 describe("(with `"+minimist.pkg+"`)", function(){
    describe("validate_opts()", function(){
+
+      it("exists", function(){
+         assert(typeof validate_opts === 'function')
+      })
 
       // FIXME
 
