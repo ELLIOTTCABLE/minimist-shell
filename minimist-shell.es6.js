@@ -298,14 +298,14 @@ const ArgumentError = class ArgumentError extends Error {}
  */
 function minimist_shell(argv, opts){
    const shOpts = validate_opts(opts)
-   debug("compiled options; result:\n%O", shOpts)
+   debug("options compiled; result:\n%O", shOpts)
 
    const argf   = flatten_args(argv, opts, shOpts)
-   debug("compiled flags; result:\n%O", argf)
+   debug("flags compiled; result:\n%O", argf)
 
    // NYI ...
    const script = ''
-   debug("compiled script; result:\n%s", indent(script, 2))
+   debug("script compiled; result:\n%s", indent(script, 2))
 
    return ''
 }
