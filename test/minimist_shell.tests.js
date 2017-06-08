@@ -7,6 +7,7 @@ const debug    = require('debug')('minimist-shell:test')
 
 const  { validate_opts
        , flatten_args
+       , SHELL_VALUE
        , ArgumentError
 } = minimist_shell
 
@@ -88,6 +89,51 @@ describe("(with `"+minimist.pkg+"`)", function(){
          result = flatten_args(argf, opts)
          assert(typeof result.foo === 'number')
          assert(result.foo === 1337)
+      })
+
+      it("maps boolean-true to a non-empty string (in the absence of `opts.booleans`)", function(){
+         argf   = minimist(['','', '--foo'], opts = { boolean: ['foo'] })
+         assert(typeof argf.foo === 'boolean')
+
+         result = flatten_args(argf, opts)
+         assert(typeof result.foo === 'string')
+         assert(result.foo.length !== 0)
+      })
+
+      it("maps boolean-false to the empty string (in the absence of `opts.booleans`)", function(){
+         argf   = minimist(['','', '--no-foo'], opts = { boolean: ['foo'] })
+         assert(typeof argf.foo === 'boolean')
+
+         result = flatten_args(argf, opts)
+         assert(typeof result.foo === 'string')
+         assert(result.foo.length === 0)
+      })
+
+      it("maps booleans to functions if so-configured by `opts.booleans`)", function(){
+         opts   = { boolean: ['foo'], shell: {booleans: 'function'} }
+         argf   = minimist(['','', '--foo'], opts)
+
+         assert(opts.shell.booleans === 'function')
+         assert(typeof argf.foo === 'boolean')
+
+         result = flatten_args(argf, opts)
+         assert(typeof result.foo === 'object')
+         assert(result.foo[SHELL_VALUE])
+      })
+
+      it("maps booleans to any other pair of values configured via `opts.booleans`)", function(){
+         opts   = { boolean: ['foo', 'bar'], shell: {booleans: {true: 'baz', false: 'widget'}} }
+         argf   = minimist(['','', '--no-foo', '--bar'], opts)
+
+         assert(typeof opts.shell.booleans === 'object')
+         assert(typeof argf.foo === 'boolean')
+         assert(typeof argf.bar === 'boolean')
+
+         result = flatten_args(argf, opts)
+         assert(typeof result.foo === 'string')
+         assert(typeof result.bar === 'string')
+         assert(result.foo === 'widget')
+         assert(result.bar === 'baz')
       })
 
    })

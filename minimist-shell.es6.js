@@ -8,6 +8,8 @@ const debug    = require('debug')('minimist-shell')
 
 const valid_shell_variable = /[A-Za-z_][A-Za-z0-9_]*/
 
+const SHELL_VALUE = Symbol('minimist_shell::SHELL_VALUE')
+
 const ArgumentError = class ArgumentError extends Error {}
 
 /**
@@ -188,19 +190,17 @@ const ArgumentError = class ArgumentError extends Error {}
  *       Although there are some security concerns with using this in shell-variables to represent
  *       boolean values more directly, it *is* convenient and somewhat more concise.
  *
- *    3. **An array of precisely two strings, (i.e. `["yes", "no"]`).** Finally, sometimes, the most
- *       direct method, is comparing string-content equality in the shell. If given a tuple of
- *       string-words to represent `true` and `false`, `minimist_shell()` will simply set boolean-
- *       flag's variables directly to those provided values:
+ *    3. **An mapping, translating `true` and `false` to strings of your choice (i.e. `{"true":
+ *       "yes", "false": "no"}`).** Finally, sometimes, the most direct method, is comparing string-
+ *       content equality in the shell. If given a mapping of string-words to represent `true` and
+ *       `false`, `minimist_shell()` will simply set boolean-flag's variables directly to those
+ *       provided values:
  *
  *           printf "'%s' " $# "$@"                       //=> '2' '--foo' '--no-bar'
- *           eval "$(minimist $* <<<'{"booleans":["yes","no"]}')"
- *           printf "'%s' " "$foo" "$bar"                 //=> 'yes' 'no'
- *           if [ "$foo" = "yes" ] && [ "$bar" = "no" ]; then
+ *           eval "$(minimist $* <<<'{"booleans":{"true":"indeed","false":"nay!"}}')"
+ *           printf "'%s' " "$foo" "$bar"                 //=> 'indeed' 'nay!'
+ *           if [ "$foo" = "indeed" ] && [ "$bar" = "nay!" ]; then
  *              echo 'whee'; fi                           //=> whee
- *
- *       (Of note, this is the only way out of the above for which it's easy to differentiate
- *        “absent” arguments, from “explicitly boolean-false” arguments.)
  *
  *  - `"arrays":` [**Default:** `false`]
  *    By default, array-arguments (`--foo=A --foo=B` under @substack's `minimist`, or `rminimist`'s
@@ -347,13 +347,20 @@ function validate_opts(minimist){
    booleans = (typeof opts.booleans === 'undefined')
             ? ""    : opts.booleans
 
-   if (! _.isArray(booleans) && booleans !== "" && booleans !== 'function')
+   const is_valid_boolean_map =
+         _.isObject(booleans)
+      && Object.keys(booleans).length === 2
+      && typeof booleans.true === 'string'
+      && typeof booleans.false === 'string'
+
+   if (!is_valid_boolean_map && booleans !== "" && booleans !== 'function')
       throw multiline_error(new ArgumentError
        , 'minimist_shell(): Invalid setting for "booleans" option.'
        , 'minimist_shell(..., {"booleans":...}) must be set to one of:'
        , ' - The empty string (""),'
        , ' - The precise string "function",'
-       , ' - or an array of two strings: ["yes", "no"].')
+       , ' - or a mapping with the keys `"true"` and `"false"`:'
+       , '      {"true": "yes", "false": "no"}')
 
    arrays = (typeof opts.arrays === 'undefined')
           ? false : opts.arrays
@@ -498,7 +505,7 @@ function flatten_args(argv, opts, shOpts, shellify_name){ let known
    }
 
 
-   const HANDLED = Symbol('$flatten()::HANDLED')
+   const HANDLED = Symbol('minimist_shell::$flatten()::HANDLED')
 
    // This recursive-function can be called on sub-objects, to reduce them to path-named variables.
    // At any given invocation, there is:
@@ -534,12 +541,15 @@ function flatten_args(argv, opts, shOpts, shellify_name){ let known
          if (shOpts.booleans === '')
             return value ? 'true' : ''
          else
-         if (shOpts.booleans === 'function')
-            return value ? {type: 'function', string: "[ 0 -eq 0 ]"}
-                         : {type: 'function', string: "[ 0 -eq 1 ]"}
+         if (shOpts.booleans === 'function') {
+            const  struct = value ? {type: 'function', string: "[ 0 -eq 0 ]"}
+                                  : {type: 'function', string: "[ 0 -eq 1 ]"}
+            Object.defineProperty(
+                   struct, SHELL_VALUE, { value: true })
+            return struct }
          else
-         if (_.isArray(shOpts.booleans) && shOpts.booleans.length >= 2)
-            return value ? shOpts.booleans[0] : shOpts.booleans[1]
+         if (_.isObject(shOpts.booleans) && Object.keys(shOpts.booleans).length >= 2)
+            return value ? shOpts.booleans.true : shOpts.booleans.false
          else assert.fail("invalid 'boolean' setting of " + shOpts.booleans)
       }
 
@@ -679,4 +689,5 @@ module.exports.validate_opts  = validate_opts
 module.exports.flatten_args   = flatten_args
 module.exports.shellifier     = default_shellifier
 module.exports.munger         = default_munger
+module.exports.SHELL_VALUE    = SHELL_VALUE
 module.exports.ArgumentError  = ArgumentError
